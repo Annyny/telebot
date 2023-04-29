@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def start(update, context):
     keyboard = [
         [
-            InlineKeyboardButton("Вход", callback_data=str(registration)),
+            InlineKeyboardButton("Вход", callback_data=str(first_entrance)),
             InlineKeyboardButton("Регистрация", callback_data=str(registration)),
         ]
     ]
@@ -24,15 +24,26 @@ async def start(update, context):
     # Tell ConversationHandler that we're in state `FIRST` now
     return 1
 
-async def enter(update, context):
+async def first_entrance(update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(text="Вход\nВведите вашу яндекс почту:")
+    await query.edit_message_text(text="Вход\nВведите ваш логин:")
     return 2
 
-# async def registration(update, context):
-#     await update.message.reply_text("Регистрация\nНапишите вашу яндекс почту:")
-#     return 3
+async def second_entrance(update, context):
+    keyboard = [
+        [
+            InlineKeyboardButton("Забыли пароль?", callback_data=str(registration)),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text="Вход\nВведите ваш пароль:", reply_markup=reply_markup)
+    return 3
+
+async def registration(update, context):
+    await update.message.reply_text("Регистрация\nНапишите ваш логин:")
+    return 1
+
 
 # async def first_response(update, context):
 #     # Это ответ на первый вопрос.
@@ -71,11 +82,13 @@ def main():
         # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
         states={
             # Функция читает ответ на первый вопрос и задаёт второй.
-            1: [CallbackQueryHandler(enter),
+            1: [
+                CallbackQueryHandler(first_entrance),
                 CallbackQueryHandler(registration),
                 ],
             # Функция читает ответ на второй вопрос и завершает диалог.
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_response)]
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_entrance)],
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_entrance)]
         },
 
         # Точка прерывания диалога. В данном случае — команда /stop.
