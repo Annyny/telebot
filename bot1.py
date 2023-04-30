@@ -3,6 +3,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, Conversati
 from telegram import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton
 from db import Database
 import logging
+import random
 
 data = Database('game.db')
 
@@ -26,17 +27,19 @@ async def start(update, context):
 async def catalog(update, context):
     query = update.callback_query
     await query.answer()
-    global ANSWER
-    ANSWER = ''
     keyboard = [[InlineKeyboardButton('Биология', callback_data='biology'),
-                 InlineKeyboardButton('История', callback_data='history')],
-                [InlineKeyboardButton('Инструкция', callback_data='help')]]
+                 InlineKeyboardButton('История', callback_data='history')]]
     markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text("Теперь ты можешь выбрать нужную тебе категорию:", reply_markup=markup)
     return 2
 
 async def replic(update, context):
-    await update.message.reply_text('Извините, но я вас не понял. Попробуйте ещё раз.')
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text('Извините, но я вас не понял. Попробуйте ещё раз.', reply_markup=markup)
     return 1
 
 ANSWER = ''
@@ -44,74 +47,89 @@ ANSWER = ''
 async def biology(update, context):
     query = update.callback_query
     await query.answer()
-    global ANSWER
     question = data.biology_questions()
+    global ANSWER
     ANSWER = data.biology_answers(question)
-    await query.edit_message_text(f'Вопроc: {question}')
+    ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
+    button = InlineKeyboardButton('Неверно', callback_data='disanswer')
+    ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
+    back = InlineKeyboardButton('Веруться в меню', callback_data='catalog')
+    rand = random.choice([1, 2])
+    if rand == 1:
+        markup = InlineKeyboardMarkup([[ansbutton, button], [ins, back]])
+        await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+        return 3
+    markup = InlineKeyboardMarkup([[button, ansbutton], [ins, back]])
+    await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
     return 4
 
-async def biology_second(update, context):
-    # keyboard = [[InlineKeyboardButton('Продолжить', callback_data='biology'),
-    #              InlineKeyboardButton('Вернуться к каталогу', callback_data='catalog')],
-    #             [InlineKeyboardButton('Инструкция', callback_data='help')]]
-    #
-    global ANSWER
-    question = data.biology_questions()
-    ANSWER = data.biology_answers(question)
-    await update.message.reply_text(f'Вопроc: {question}')
-
-
 async def biology_answers(update, context):
-    # keyboard = [[InlineKeyboardButton('Продолжить', callback_data='biology'),
-    #              InlineKeyboardButton('Вернуться к каталогу', callback_data='catalog')],
-    #             [InlineKeyboardButton('Инструкция', callback_data='help')]]
-    #
-    if update.message.text == ANSWER:
-        await update.message.reply_text(f'Верно!')
-        return 5
-    await update.message.reply_text(f'Правильный ответ: {ANSWER}')
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Продолжить', callback_data='biology'),
+                 InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query.data == 'answer':
+        await query.edit_message_text(f'Верно!', reply_markup=markup)
+    else:
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}', reply_markup=markup)
     return 5
 
 async def history(update, context):
-    print(2343545)
-    global ANSWER
-    print(54654656)
+    query = update.callback_query
+    await query.answer()
     question = data.history_questions()
+    global ANSWER
     ANSWER = data.history_answers(question)
-    await update.message.reply_text(f'Вопроc: {question}')
+    ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
+    button = InlineKeyboardButton('Неверно', callback_data='disanswer')
+    ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
+    back = InlineKeyboardButton('Вернуться в меню', callback_data='catalog')
+    rand = random.choice([1, 2])
+    if rand == 1:
+        markup = InlineKeyboardMarkup([[ansbutton, button], [ins, back]])
+        await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+        return 6
+    markup = InlineKeyboardMarkup([[button, ansbutton], [ins, back]])
+    await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
     return 7
 
 async def history_answers(update, context):
-    if update.message.text == ANSWER:
-        await update.message.reply_text(f'Верно!')
-        return 3
-    await update.message.reply_text(f'Попробуй ещё раз')
-    return 5
-
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Продолжить', callback_data='history'),
+                 InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query.data == 'answer':
+        await query.edit_message_text(f'Верно!', reply_markup=markup)
+    else:
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}', reply_markup=markup)
+    return 8
 
 async def instruction(update, context):
     query = update.callback_query
     await query.answer()
-    keyboard = [[InlineKeyboardButton('Назад', callback_data='back')]]
+    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('О боте', callback_data='about')]]
     markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("1. Просто жми на нужные кнопки.\n"
+    await query.edit_message_text("1. Просто жми на нужные кнопки.\n"
     "2. Если вы выбрали категорию 'Биология', то пиши слова или словосочетания без точек на конце.\n"
-    "3. Если ты выбрал категорию 'История', то пиши дату или даты(через дифиз) без точек.", keyboard_murkup=markup)
+    "3. Если ты выбрал категорию 'История', то пиши дату или даты(через дифиз) без точек.", reply_markup=markup)
     return 9  # Константа, означающая конец диалога.
     # Все обработчики из states и fallbacks становятся неактивными.
 
-async def back(update, context):
-    await update.message.reply_text("Всего доброго!")
-    return 1
-
 async def about(update, context):
-    await update.message.reply_text("Данный бот придуман для повышения знаний детей и взрослых.\n"
-                                    "Надеемся мы помогли усвоить вам чуть больше школьной программы")
-    return ConversationHandler.END
-
-async def stop(update, context):
-    await update.message.reply_text("Всего доброго!")
-    return ConversationHandler.END
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("Данный бот придуман для повышения знаний детей и взрослых.\n"
+                                    "Надеемся мы помогли усвоить вам чуть больше школьной программы",
+                                  reply_markup=markup)
+    return 10
 
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -126,24 +144,60 @@ def main():
         states={
             # Функция читает ответ на первый вопрос и задаёт второй.
             1: [
-                CallbackQueryHandler(catalog),
-                CallbackQueryHandler(instruction),
-                CallbackQueryHandler(about),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
                 ],
             2: [
-                CallbackQueryHandler(biology),
-                CallbackQueryHandler(history),
-                CallbackQueryHandler(instruction),
+                CallbackQueryHandler(biology, pattern="^" + 'biology' + "$"),
+                CallbackQueryHandler(history, pattern="^" + 'history' + "$"),
                 ],
-            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, biology_answers)],
-            5: [MessageHandler(filters.TEXT & ~filters.COMMAND, biology_second)],
-            6: [MessageHandler(filters.TEXT & ~filters.COMMAND, history)],
-            7: [MessageHandler(filters.TEXT & ~filters.COMMAND, history_answers)],
-            9: [MessageHandler(filters.TEXT & ~filters.COMMAND, biology)],
+            3: [
+                CallbackQueryHandler(biology_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(biology_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            4: [
+                CallbackQueryHandler(biology_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(biology_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            5: [
+                CallbackQueryHandler(biology, pattern="^" + 'biology' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ],
+            6: [
+                CallbackQueryHandler(history_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(history_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            7: [
+                CallbackQueryHandler(history_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(history_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            8: [
+                CallbackQueryHandler(history, pattern="^" + 'history' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ],
+            9: [
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
+                ],
+            10: [
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ]
         },
 
         # Точка прерывания диалога. В данном случае — команда /stop.
-        fallbacks=[CommandHandler('stop', stop)]
+        fallbacks=[CommandHandler('start', start)]
     )
     app.add_handler(conv_handler)
     app.run_polling()
