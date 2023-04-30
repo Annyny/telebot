@@ -1,182 +1,208 @@
-import logging
 from config import TOKEN
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes,
-    ConversationHandler,
+from telegram.ext import Application, CommandHandler, ConversationHandler, CallbackQueryHandler
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from db import Database
+import logging
+import random
+
+ANSWER = ''
+IF_OK = ['Отлично!', 'Верно!', 'Хорошо!', 'Так держать!', 'Молодец!', 'Круто!']
+IF_WRONG = ['Попробуй ещё! ', 'У тебя получится!',
+            'Давай! Я в тебя верю! У тебя получится!', 'В следующий раз у тебя обязательно получится!']
+data = Database('game.db')
+
+# Запускаем логгирование
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
 )
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
 logger = logging.getLogger(__name__)
 
-# Stages
-START_ROUTES, END_ROUTES = range(2)
-# Callback data
-ONE, TWO, THREE, FOUR = range(4)
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Send message on `/start`."""
-    # Get user that sent /start and log his name
-    user = update.message.from_user
-    logger.info("User %s started the conversation.", user.first_name)
-    # Build InlineKeyboard where each button has a displayed text
-    # and a string as callback_data
-    # The keyboard is a list of button rows, where each row is in turn
-    # a list (hence `[[...]]`).
-    keyboard = [
-        [
-            InlineKeyboardButton("1", callback_data=str(ONE)),
-            InlineKeyboardButton("2", callback_data=str(TWO)),
-        ]
-    ]
+async def start(update, context):
+    keyboard = [[InlineKeyboardButton('Вход', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction'),
+                 InlineKeyboardButton('О боте', callback_data='about')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    # Send message with text and appended InlineKeyboard
-    await update.message.reply_text("Start handler, Choose a route", reply_markup=reply_markup)
-    # Tell ConversationHandler that we're in state `FIRST` now
-    return START_ROUTES
+    await update.message.reply_text("Привет. Я твой бот-помощник.\nВыбери кнопку", reply_markup=reply_markup)
+    return 1
 
-
-async def start_over(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Prompt same text & keyboard as `start` does but not as new message"""
-    # Get CallbackQuery from Update
-    query = update.callback_query
-    # CallbackQueries need to be answered, even if no notification to the user is needed
-    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
-    await query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("1", callback_data=str(ONE)),
-            InlineKeyboardButton("2", callback_data=str(TWO)),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    # Instead of sending a new message, edit the message that
-    # originated the CallbackQuery. This gives the feeling of an
-    # interactive menu.
-    await query.edit_message_text(text="Start handler, Choose a route", reply_markup=reply_markup)
-    return START_ROUTES
-
-
-async def one(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons"""
+async def catalog(update, context):
     query = update.callback_query
     await query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("3", callback_data=str(THREE)),
-            InlineKeyboardButton("4", callback_data=str(FOUR)),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="First CallbackQueryHandler, Choose a route", reply_markup=reply_markup
-    )
-    return START_ROUTES
+    keyboard = [[InlineKeyboardButton('Биология', callback_data='biology'),
+                 InlineKeyboardButton('История', callback_data='history')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction'),
+                 InlineKeyboardButton('О боте', callback_data='about')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("Теперь ты можешь выбрать нужную тебе категорию:", reply_markup=markup)
+    return 2
 
-
-async def two(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons"""
+async def biology(update, context):
     query = update.callback_query
     await query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("1", callback_data=str(ONE)),
-            InlineKeyboardButton("3", callback_data=str(THREE)),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="Second CallbackQueryHandler, Choose a route", reply_markup=reply_markup
-    )
-    return START_ROUTES
+    question = data.biology_questions()
+    global ANSWER
+    ANSWER = data.biology_answers(question)
+    wrong_answer = data.biology_wrong_answers(question)
+    ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
+    button = InlineKeyboardButton(wrong_answer, callback_data='disanswer')
+    ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
+    back = InlineKeyboardButton('Веруться в меню', callback_data='catalog')
+    rand = random.choice([1, 2])
+    if rand == 1:
+        markup = InlineKeyboardMarkup([[ansbutton, button], [ins, back]])
+        await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+        return 3
+    markup = InlineKeyboardMarkup([[button, ansbutton], [ins, back]])
+    await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+    return 4
 
-
-async def three(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons. This is the end point of the conversation."""
+async def biology_answers(update, context):
     query = update.callback_query
     await query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("Yes, let's do it again!", callback_data=str(ONE)),
-            InlineKeyboardButton("Nah, I've had enough ...", callback_data=str(TWO)),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="Third CallbackQueryHandler. Do want to start over?", reply_markup=reply_markup
-    )
-    # Transfer to conversation state `SECOND`
-    return END_ROUTES
+    keyboard = [[InlineKeyboardButton('Продолжить', callback_data='biology'),
+                 InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query.data == 'answer':
+        ok = random.choice(IF_OK)
+        await query.edit_message_text(f'{ok}', reply_markup=markup)
+    else:
+        wrong = random.choice(IF_WRONG)
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}\n{wrong}', reply_markup=markup)
+    return 5
 
-
-async def four(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Show new choice of buttons"""
+async def history(update, context):
     query = update.callback_query
     await query.answer()
-    keyboard = [
-        [
-            InlineKeyboardButton("2", callback_data=str(TWO)),
-            InlineKeyboardButton("3", callback_data=str(THREE)),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="Fourth CallbackQueryHandler, Choose a route", reply_markup=reply_markup
-    )
-    return START_ROUTES
+    question = data.history_questions()
+    global ANSWER
+    ANSWER = data.history_answers(question)
+    wrong_answer = data.history_wrong_answers(question)
+    ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
+    button = InlineKeyboardButton(wrong_answer, callback_data='disanswer')
+    ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
+    back = InlineKeyboardButton('Вернуться в меню', callback_data='catalog')
+    rand = random.choice([1, 2])
+    if rand == 1:
+        markup = InlineKeyboardMarkup([[ansbutton, button], [ins, back]])
+        await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+        return 6
+    markup = InlineKeyboardMarkup([[button, ansbutton], [ins, back]])
+    await query.edit_message_text(f'Вопроc: {question}', reply_markup=markup)
+    return 7
 
-
-async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Returns `ConversationHandler.END`, which tells the
-    ConversationHandler that the conversation is over.
-    """
+async def history_answers(update, context):
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(text="See you next time!")
-    return ConversationHandler.END
+    keyboard = [[InlineKeyboardButton('Продолжить', callback_data='history'),
+                 InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    if update.callback_query.data == 'answer':
+        ok = random.choice(IF_OK)
+        await query.edit_message_text(ok, reply_markup=markup)
+    else:
+        wrong = random.choice(IF_WRONG)
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}\n{wrong}', reply_markup=markup)
+    return 8
 
+async def instruction(update, context):
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('О боте', callback_data='about')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("1. Просто жми на нужные кнопки.\n"
+    "2. Если вы выбрали категорию 'Биология', то пиши слова или словосочетания без точек на конце.\n"
+    "3. Если ты выбрал категорию 'История', то пиши дату или даты(через дифиз) без точек.", reply_markup=markup)
+    return 9  # Константа, означающая конец диалога.
+    # Все обработчики из states и fallbacks становятся неактивными.
 
-def main() -> None:
-    """Run the bot."""
-    # Create the Application and pass it your bot's token.
-    application = Application.builder().token(TOKEN).build()
+async def about(update, context):
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text("Данный бот придуман для повышения знаний детей и взрослых.\n"
+                                    "Надеемся мы помогли усвоить вам чуть больше школьной программы",
+                                  reply_markup=markup)
+    return 10
 
-    # Setup conversation handler with the states FIRST and SECOND
-    # Use the pattern parameter to pass CallbackQueries with specific
-    # data pattern to the corresponding handlers.
-    # ^ means "start of line/string"
-    # $ means "end of line/string"
-    # So ^ABC$ will only allow 'ABC'
+def main():
+    app = Application.builder().token(TOKEN).build()
+
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        # Точка входа в диалог.
+        # В данном случае — команда /start. Она задаёт первый вопрос.
+        entry_points=[CommandHandler('start', start)],
+
+        # Состояние внутри диалога.
+        # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
         states={
-            START_ROUTES: [
-                CallbackQueryHandler(one, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(two, pattern="^" + str(TWO) + "$"),
-                CallbackQueryHandler(three, pattern="^" + str(THREE) + "$"),
-                CallbackQueryHandler(four, pattern="^" + str(FOUR) + "$"),
-            ],
-            END_ROUTES: [
-                CallbackQueryHandler(start_over, pattern="^" + str(ONE) + "$"),
-                CallbackQueryHandler(end, pattern="^" + str(TWO) + "$"),
-            ],
+            # Функция читает ответ на первый вопрос и задаёт второй.
+            1: [
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
+                ],
+            2: [
+                CallbackQueryHandler(biology, pattern="^" + 'biology' + "$"),
+                CallbackQueryHandler(history, pattern="^" + 'history' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
+                ],
+            3: [
+                CallbackQueryHandler(biology_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(biology_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            4: [
+                CallbackQueryHandler(biology_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(biology_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            5: [
+                CallbackQueryHandler(biology, pattern="^" + 'biology' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ],
+            6: [
+                CallbackQueryHandler(history_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(history_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            7: [
+                CallbackQueryHandler(history_answers, pattern="^" + 'answer' + "$"),
+                CallbackQueryHandler(history_answers, pattern="^" + 'disanswer' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                ],
+            8: [
+                CallbackQueryHandler(history, pattern="^" + 'history' + "$"),
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ],
+            9: [
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
+                ],
+            10: [
+                CallbackQueryHandler(catalog, pattern="^" + 'catalog' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                ]
         },
-        fallbacks=[CommandHandler("start", start)],
+
+        # Точка прерывания диалога. В данном случае — команда /stop.
+        fallbacks=[CommandHandler('start', start)]
     )
+    app.add_handler(conv_handler)
+    app.run_polling()
 
-    # Add ConversationHandler to application that will be used for handling updates
-    application.add_handler(conv_handler)
-
-    # Run the bot until the user presses Ctrl-C
-    application.run_polling()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
