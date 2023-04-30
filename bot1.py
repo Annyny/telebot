@@ -50,8 +50,9 @@ async def biology(update, context):
     question = data.biology_questions()
     global ANSWER
     ANSWER = data.biology_answers(question)
+    wrong_answer = data.biology_wrong_answers(question)
     ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
-    button = InlineKeyboardButton('Неверно', callback_data='disanswer')
+    button = InlineKeyboardButton(wrong_answer, callback_data='disanswer')
     ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
     back = InlineKeyboardButton('Веруться в меню', callback_data='catalog')
     rand = random.choice([1, 2])
@@ -82,8 +83,9 @@ async def history(update, context):
     question = data.history_questions()
     global ANSWER
     ANSWER = data.history_answers(question)
+    wrong_answer = data.history_wrong_answers(question)
     ansbutton = InlineKeyboardButton(ANSWER, callback_data='answer')
-    button = InlineKeyboardButton('Неверно', callback_data='disanswer')
+    button = InlineKeyboardButton(wrong_answer, callback_data='disanswer')
     ins = InlineKeyboardButton('Инструкция', callback_data='instruction')
     back = InlineKeyboardButton('Вернуться в меню', callback_data='catalog')
     rand = random.choice([1, 2])
