@@ -5,6 +5,10 @@ from db import Database
 import logging
 import random
 
+ANSWER = ''
+IF_OK = ['Отлично!', 'Верно!', 'Хорощо!', 'Так держать!', 'Молодец!', 'Круто!']
+IF_WRONG = ['Попробуй ещё! ', 'У тебя получится!',
+            'Давай! Я в тебя верю! У тебя получится!', 'В следующий раз у тебя обязательно получится!']
 data = Database('game.db')
 
 # Запускаем логгирование
@@ -13,7 +17,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
 
 
 async def start(update, context):
@@ -28,21 +31,12 @@ async def catalog(update, context):
     query = update.callback_query
     await query.answer()
     keyboard = [[InlineKeyboardButton('Биология', callback_data='biology'),
-                 InlineKeyboardButton('История', callback_data='history')]]
+                 InlineKeyboardButton('История', callback_data='history')],
+                [InlineKeyboardButton('Инструкция', callback_data='instruction'),
+                 InlineKeyboardButton('О боте', callback_data='about')]]
     markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text("Теперь ты можешь выбрать нужную тебе категорию:", reply_markup=markup)
     return 2
-
-async def replic(update, context):
-    query = update.callback_query
-    await query.answer()
-    keyboard = [[InlineKeyboardButton('Вернуться в меню', callback_data='catalog')],
-                [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
-    markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text('Извините, но я вас не понял. Попробуйте ещё раз.', reply_markup=markup)
-    return 1
-
-ANSWER = ''
 
 async def biology(update, context):
     query = update.callback_query
@@ -72,9 +66,11 @@ async def biology_answers(update, context):
                 [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
     markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query.data == 'answer':
-        await query.edit_message_text(f'Верно!', reply_markup=markup)
+        ok = random.choice(IF_OK)
+        await query.edit_message_text(f'{ok}', reply_markup=markup)
     else:
-        await query.edit_message_text(f'Правильный ответ: {ANSWER}', reply_markup=markup)
+        wrong = random.choice(IF_WRONG)
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}\n{wrong}', reply_markup=markup)
     return 5
 
 async def history(update, context):
@@ -105,9 +101,11 @@ async def history_answers(update, context):
                 [InlineKeyboardButton('Инструкция', callback_data='instruction')]]
     markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query.data == 'answer':
-        await query.edit_message_text(f'Верно!', reply_markup=markup)
+        ok = random.choice(IF_OK)
+        await query.edit_message_text(ok, reply_markup=markup)
     else:
-        await query.edit_message_text(f'Правильный ответ: {ANSWER}', reply_markup=markup)
+        wrong = random.choice(IF_WRONG)
+        await query.edit_message_text(f'Правильный ответ: {ANSWER}\n{wrong}', reply_markup=markup)
     return 8
 
 async def instruction(update, context):
@@ -153,6 +151,8 @@ def main():
             2: [
                 CallbackQueryHandler(biology, pattern="^" + 'biology' + "$"),
                 CallbackQueryHandler(history, pattern="^" + 'history' + "$"),
+                CallbackQueryHandler(instruction, pattern="^" + 'instruction' + "$"),
+                CallbackQueryHandler(about, pattern="^" + 'about' + "$"),
                 ],
             3: [
                 CallbackQueryHandler(biology_answers, pattern="^" + 'answer' + "$"),
