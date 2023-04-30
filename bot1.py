@@ -13,6 +13,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+
 async def start(update, context):
     keyboard = [[InlineKeyboardButton('Вход', callback_data='catalog')],
                 [InlineKeyboardButton('Инструкция', callback_data='instruction'),
@@ -88,12 +90,14 @@ async def history_answers(update, context):
 
 
 async def instruction(update, context):
-    # Ответ на второй вопрос.
-    # Мы можем его сохранить в базе данных или переслать куда-либо.
-    weather = update.message.text
-    logger.info(weather)
-    await update.message.reply_text("Спасибо за участие в опросе! Всего доброго!")
-    return ConversationHandler.END  # Константа, означающая конец диалога.
+    query = update.callback_query
+    await query.answer()
+    keyboard = [[InlineKeyboardButton('Назад', callback_data='back')]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("1. Просто жми на нужные кнопки.\n"
+    "2. Если вы выбрали категорию 'Биология', то пиши слова или словосочетания без точек на конце.\n"
+    "3. Если ты выбрал категорию 'История', то пиши дату или даты(через дифиз) без точек.", keyboard_murkup=markup)
+    return 9  # Константа, означающая конец диалога.
     # Все обработчики из states и fallbacks становятся неактивными.
 
 async def back(update, context):
@@ -101,7 +105,8 @@ async def back(update, context):
     return 1
 
 async def about(update, context):
-    await update.message.reply_text("Всего доброго!")
+    await update.message.reply_text("Данный бот придуман для повышения знаний детей и взрослых.\n"
+                                    "Надеемся мы помогли усвоить вам чуть больше школьной программы")
     return ConversationHandler.END
 
 async def stop(update, context):
